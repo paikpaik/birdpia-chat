@@ -1,5 +1,5 @@
 const Room = require("../schemas/room");
-const Chat = require("../schemas/chat");
+const { removeRoom: removeRoomService } = require("../services");
 
 exports.renderMain = async (req, res, next) => {
   try {
@@ -17,14 +17,16 @@ exports.renderRoom = (req, res, next) => {
 
 exports.createRoom = async (req, res, next) => {
   try {
-    await Room.create({
+    const newRoom = await Room.create({
       title: req.body.title,
       max: req.body.max,
       owner: req.session.color,
       password: req.body.password,
     });
+
     const io = req.app.get("io");
     io.of("/room").emit("newRoom", newRoom);
+
     // 방에 들어가는 부분
     if (req.body.password) {
       res.redirect(`/room/${newRoom._id}?password=${req.body.password}`);
@@ -46,12 +48,19 @@ exports.enterRoom = async (req, res, next) => {
     if (room.password && room.password !== req.query.password) {
       return res.redirect("/?error=비밀번호가 틀렸습니다.");
     }
+
     const io = req.app.get("io");
     const { rooms } = io.of("/chat").adapter;
+
     if (room.max <= rooms.get(req.params.id)?.size) {
       return res.redirect("/?error=허용 인원을 초과했습니다.");
     }
-    res.render("chat", { title: "Birdpia 채팅방 입장" });
+
+    res.render("chat", {
+      title: "Birdpia 채팅방 입장",
+      chat: [],
+      user: req.session.color,
+    });
   } catch (error) {
     console.log(error);
     next(error);
@@ -60,8 +69,7 @@ exports.enterRoom = async (req, res, next) => {
 
 exports.removeRoom = async (req, res, next) => {
   try {
-    await Room.remove({ _id: req.params.id });
-    await Chat.remove({ room: req.params.id });
+    await removeRoomService(req.params.id);
     res.send("ok");
   } catch (error) {
     console.error(error);

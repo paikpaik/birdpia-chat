@@ -12,7 +12,7 @@ const router = express.Router();
 router.get("/", renderMain);
 router.get("/room", renderRoom);
 router.post("/room", createRoom);
-router.post("/room/:id", enterRoom);
+router.get("/room/:id", enterRoom);
 router.delete("/room/:id", removeRoom);
 
 module.exports = router;
